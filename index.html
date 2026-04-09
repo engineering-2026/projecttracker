@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KPI Dashboard 2026 — Engineering Dept | Wisma 46</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#05080f;--s1:#0c1220;--s2:#131d30;--s3:#1a2740;
+--bdr:#1e2d45;--bdr2:#2a3d5c;
+--pri:#2d7ff9;--pri2:#5b9dff;--pri-bg:rgba(45,127,249,.08);
+--grn:#00c48c;--grn-bg:rgba(0,196,140,.08);
+--amb:#ffb020;--amb-bg:rgba(255,176,32,.08);
+--red:#ff4757;--red-bg:rgba(255,71,87,.08);
+--vio:#7c5cfc;--vio-bg:rgba(124,92,252,.08);
+--t1:#edf2fc;--t2:#8fa3c4;--t3:#5a6f8e;
+--radius:10px;
+}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--t1);overflow-x:hidden}
+::selection{background:var(--pri);color:#fff}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--s1)}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}
+
+/* HEADER */
+.hdr{position:sticky;top:0;z-index:200;background:rgba(5,8,15,.85);backdrop-filter:blur(24px) saturate(1.4);border-bottom:1px solid var(--bdr);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:60px}
+.hdr-left{display:flex;align-items:center;gap:16px}
+.logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--pri),var(--vio));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;letter-spacing:-1px}
+.hdr h1{font-size:15px;font-weight:700;letter-spacing:-.4px}
+.hdr h1 em{font-style:normal;color:var(--pri2);font-weight:600}
+.hdr-sub{font-size:10px;color:var(--t3);letter-spacing:.3px;text-transform:uppercase}
+.hdr-right{display:flex;align-items:center;gap:8px}
+
+/* CONTROLS */
+.ctrl-bar{display:flex;align-items:center;gap:8px;padding:12px 28px;border-bottom:1px solid var(--bdr);background:var(--s1);flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;border:1px solid var(--bdr);background:var(--s2);color:var(--t2);font-family:'Outfit';font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{border-color:var(--pri);color:var(--pri2);background:var(--pri-bg)}
+.btn.active,.btn-pri{background:var(--pri);color:#fff;border-color:var(--pri)}
+.btn-pri:hover{filter:brightness(1.15)}
+.btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sep{width:1px;height:24px;background:var(--bdr);margin:0 4px}
+.badge-feat{font-size:9px;background:var(--vio);color:#fff;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:.3px}
+input[type=file]{display:none}
+
+/* TABS */
+.tabs{display:flex;gap:2px;padding:0 28px;background:var(--s1);border-bottom:1px solid var(--bdr)}
+.tab{padding:10px 18px;font-size:12px;font-weight:500;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab:hover{color:var(--t2)}
+.tab.active{color:var(--pri2);border-color:var(--pri)}
+
+/* MAIN */
+.main{padding:20px 28px;max-width:1680px;margin:0 auto}
+.sec{display:none}.sec.active{display:block}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--s2);border:1px solid var(--bdr);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;transition:all .2s;cursor:default}
+.kpi-card:hover{border-color:var(--bdr2);transform:translateY(-1px)}
+.kpi-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi-card[data-status="good"]::after{background:var(--grn)}
+.kpi-card[data-status="warn"]::after{background:var(--amb)}
+.kpi-card[data-status="bad"]::after{background:var(--red)}
+.kpi-id{font-family:'IBM Plex Mono';font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.kpi-name{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:10px;line-height:1.3;min-height:28px}
+.kpi-val{font-family:'IBM Plex Mono';font-size:24px;font-weight:700;letter-spacing:-1px;margin-bottom:4px}
+.kpi-target{font-size:10px;color:var(--t3)}
+.kpi-bar{height:4px;background:var(--s1);border-radius:2px;margin-top:8px;overflow:hidden}
+.kpi-bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
+.kpi-mini{display:flex;align-items:center;gap:4px;margin-top:6px;font-size:10px}
+.kpi-mini .arrow{font-size:12px}
+
+/* CHARTS */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.chart-row.triple{grid-template-columns:1fr 1fr 1fr}
+.chart-box{background:var(--s2);border:1px solid var(--bdr);border-radius:var(--radius);padding:16px}
+.chart-box h3{font-size:12px;font-weight:600;color:var(--t2);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.chart-box h3 .dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.chart-box canvas{max-height:260px}
+
+/* TABLE */
+.tbl-wrap{background:var(--s2);border:1px solid var(--bdr);border-radius:var(--radius);overflow:hidden;margin-bottom:20px}
+.tbl-hdr{padding:14px 18px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between}
+.tbl-hdr h3{font-size:13px;font-weight:600}
+.tbl-scroll{overflow-x:auto;max-height:500px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:var(--s1);padding:8px 10px;text-align:left;font-weight:600;color:var(--t3);font-size:9px;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;z-index:2}
+td{padding:7px 10px;border-bottom:1px solid rgba(30,45,69,.5);vertical-align:middle}
+tr:hover td{background:rgba(45,127,249,.03)}
+.rp{font-family:'IBM Plex Mono';text-align:right;font-size:10px;white-space:nowrap}
+.editable{cursor:text;padding:3px 6px;border-radius:4px;min-width:70px;outline:none;transition:all .15s;display:inline-block}
+.editable:hover{background:rgba(45,127,249,.06)}
+.editable:focus{background:rgba(45,127,249,.12);box-shadow:0 0 0 1px var(--pri)}
+.edited{animation:editFlash .4s}
+@keyframes editFlash{0%{background:rgba(0,196,140,.2)}100%{background:transparent}}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:600}
+.b-good{background:var(--grn-bg);color:var(--grn)}
+.b-warn{background:var(--amb-bg);color:var(--amb)}
+.b-bad{background:var(--red-bg);color:var(--red)}
+.b-info{background:var(--pri-bg);color:var(--pri2)}
+
+/* TREND */
+.trend-controls{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+
+/* PRINT */
+.print-area{display:none}
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .hdr,.ctrl-bar,.tabs,.no-print{display:none!important}
+  .print-area{display:block!important;padding:20px}
+  .print-area h2{font-size:18px;margin-bottom:8px}
+  .print-area table{width:100%;border-collapse:collapse;font-size:10px}
+  .print-area th,.print-area td{border:1px solid #ccc;padding:6px 8px;text-align:left}
+  .print-area th{background:#e8e8e8;font-weight:700}
+  .print-area .rp{text-align:right}
+}
+
+/* STATUS DOT */
+.sdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.sdot-g{background:var(--grn)}.sdot-w{background:var(--amb)}.sdot-r{background:var(--red)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--s3);border:1px solid var(--bdr2);border-radius:8px;padding:12px 20px;font-size:12px;color:var(--t1);z-index:999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* RESPONSIVE */
+@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .chart-row,.chart-row.triple{grid-template-columns:1fr}
+  .main{padding:12px}
+  .ctrl-bar{padding:8px 12px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="logo">W</div>
+    <div>
+      <h1>KPI Dashboard <em>Engineering 2026</em></h1>
+      <div class="hdr-sub">PT Swadharma Primautama — Wisma 46 Kota BNI</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <span style="font-family:'IBM Plex Mono';font-size:11px;color:var(--t3)" id="lastSaved"></span>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div class="ctrl-bar">
+  <label class="btn" for="fileImport">
+    <svg><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+    Import Excel
+    <span class="badge-feat">F1</span>
+  </label>
+  <input type="file" id="fileImport" accept=".xlsx,.xls,.csv">
+
+  <button class="btn" onclick="exportExcel()">
+    <svg><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+    Export Excel
+    <span class="badge-feat">F2</span>
+  </button>
+
+  <button class="btn" onclick="saveState()">
+    <svg><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    Save
+    <span class="badge-feat">F3</span>
+  </button>
+
+  <button class="btn" onclick="loadState()">
+    <svg><path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 002-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+    Load
+  </button>
+
+  <div class="sep"></div>
+
+  <div id="qFilter" style="display:flex;gap:3px">
+    <button class="btn active" data-q="ALL" onclick="setQuarter('ALL')">ALL</button>
+    <button class="btn" data-q="Q1" onclick="setQuarter('Q1')">Q1</button>
+    <button class="btn" data-q="Q2" onclick="setQuarter('Q2')">Q2</button>
+    <button class="btn" data-q="Q3" onclick="setQuarter('Q3')">Q3</button>
+    <button class="btn" data-q="Q4" onclick="setQuarter('Q4')">Q4</button>
+  </div>
+  <span class="badge-feat">F4</span>
+
+  <div class="sep"></div>
+
+  <button class="btn" onclick="printReport()">
+    <svg><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    Print Report
+    <span class="badge-feat">F5</span>
+  </button>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" data-sec="dashboard" onclick="switchTab(this)">Dashboard</div>
+  <div class="tab" data-sec="table" onclick="switchTab(this)">Data Table <span class="badge-feat">F6</span></div>
+  <div class="tab" data-sec="trend" onclick="switchTab(this)">Trend Analysis <span class="badge-feat">F9</span></div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ========== DASHBOARD ========== -->
+<div class="sec active" id="sec-dashboard">
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3><span class="dot" style="background:var(--pri)"></span>Budget vs Realization — All Categories</h3>
+      <canvas id="chBudgetReal"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3><span class="dot" style="background:var(--grn)"></span>KPI Achievement Score</h3>
+      <canvas id="chKPIRadar"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3><span class="dot" style="background:var(--amb)"></span>OPEX Utilities — Monthly (Budget vs Usage)</h3>
+      <canvas id="chUtilMonthly"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3><span class="dot" style="background:var(--vio)"></span>OPEX R&R — Category Breakdown</h3>
+      <canvas id="chRRCat"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3><span class="dot" style="background:var(--red)"></span>CAPEX Project Status</h3>
+      <canvas id="chCapexStatus"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3><span class="dot" style="background:var(--grn)"></span>Budget Allocation Proportion</h3>
+      <canvas id="chAllocation"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ========== DATA TABLE ========== -->
+<div class="sec" id="sec-table">
+  <div class="tbl-wrap">
+    <div class="tbl-hdr">
+      <h3>KPI Data Table — Click any <span style="color:var(--pri)">Usage / Realization</span> cell to edit <span class="badge-feat">F6</span></h3>
+      <div style="display:flex;gap:8px">
+        <select id="tblCatFilter" class="btn" onchange="filterTbl()">
+          <option value="">All Categories</option>
+          <option value="opex_util">OPEX Utilities</option>
+          <option value="opex_rr">OPEX R&R</option>
+          <option value="capex">CAPEX</option>
+          <option value="pm">Project Maintenance</option>
+        </select>
+      </div>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>KPI Code</th>
+            <th>Category</th>
+            <th>Item</th>
+            <th class="rp">Budget (Rp)</th>
+            <th class="rp">Jan</th><th class="rp">Feb</th><th class="rp">Mar</th>
+            <th class="rp">Apr</th><th class="rp">May</th><th class="rp">Jun</th>
+            <th class="rp">Jul</th><th class="rp">Aug</th><th class="rp">Sep</th>
+            <th class="rp">Oct</th><th class="rp">Nov</th><th class="rp">Dec</th>
+            <th class="rp">Total Usage</th>
+            <th>% Used</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="dataTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ========== TREND ANALYSIS ========== -->
+<div class="sec" id="sec-trend">
+  <div class="trend-controls">
+    <select class="btn" id="trendMetric" onchange="renderTrend()">
+      <option value="util_total">OPEX Utilities — Total</option>
+      <option value="util_elec">Electricity</option>
+      <option value="util_water">Water</option>
+      <option value="util_gas">Gas (Caz)</option>
+      <option value="rr_total">OPEX R&R — Total</option>
+    </select>
+    <span class="badge-feat">F9</span>
+  </div>
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3><span class="dot" style="background:var(--pri)"></span>Moving Average (3 Bulan) & Actual</h3>
+      <canvas id="chMA"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3><span class="dot" style="background:var(--grn)"></span>Cumulative Budget vs Cumulative Usage</h3>
+      <canvas id="chCum"></canvas>
+    </div>
+  </div>
+  <div class="chart-row">
+    <div class="chart-box" style="grid-column:1/-1">
+      <h3><span class="dot" style="background:var(--vio)"></span>Quarter Comparison</h3>
+      <canvas id="chQComp"></canvas>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- PRINT AREA -->
+<div class="print-area" id="printArea">
+  <h2>Engineering Department — KPI Report 2026</h2>
+  <p>PT Swadharma Primautama — Wisma 46 Kota BNI</p>
+  <p id="printDate"></p>
+  <br>
+  <table id="printTable"></table>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// =============================================
+// DATA MODEL
+// =============================================
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const STATE = {
+  quarter: 'ALL',
+  data: {
+    opex_utilities: [
+      {id:'A-1.1', cat:'opex_util', name:'Electricity', bobot:15,
+       budget:[1201379670,1201379670,1201379670,1201379670,1201379670,1201379670,1207367170,1207367170,1207367170,1207367170,1207367170,1207367170],
+       usage:[1185378776,1134559998,1024218765,0,0,0,0,0,0,0,0,0]},
+      {id:'A-1.2', cat:'opex_util', name:'Water', bobot:5,
+       budget:[137676258,137676258,137676258,137676258,137676258,137676258,138087671,138087671,138087671,138087671,138087671,138087671],
+       usage:[139364335,131301835,117799835,0,0,0,0,0,0,0,0,0]},
+      {id:'A-1.3', cat:'opex_util', name:'Gas (Caz)', bobot:3,
+       budget:[37848416,37848416,37848416,37848416,37848416,37848416,37961704,37961704,37961704,37961704,37961704,37961704],
+       usage:[39730644,36938306,36040936,0,0,0,0,0,0,0,0,0]},
+    ],
+    opex_rr: [
+      {id:'B-2.1', cat:'opex_rr', name:'HV/LV Electrical', bobot:5, budget_ann:300000000, usage_ann:129074403,
+       budget:[35000000,25000000,30000000,30000000,35000000,30000000,30000000,25000000,30000000,30000000,35000000,30000000],
+       usage:[32494918,34838500,61740985,0,0,0,0,0,0,0,0,0]},
+      {id:'B-2.2', cat:'opex_rr', name:'Plumbing/Mechanical', bobot:5, budget_ann:305000000, usage_ann:71727283,
+       budget:[45000000,25000000,25000000,20000000,45000000,25000000,15000000,50000000,25000000,30000000,45000000,30000000],
+       usage:[34480966,4751500,32494817,0,0,0,0,0,0,0,0,0]},
+      {id:'B-2.3', cat:'opex_rr', name:'HVAC (ACMV)', bobot:5, budget_ann:450000000, usage_ann:221675040,
+       budget:[30000000,30000000,10000000,125000000,15000000,20000000,40000000,125000000,35000000,20000000,25000000,40000000],
+       usage:[219904500,0,1770540,0,0,0,0,0,0,0,0,0]},
+      {id:'B-2.4', cat:'opex_rr', name:'Civil & Builder', bobot:3, budget_ann:210000000, usage_ann:63380080,
+       budget:[20000000,15000000,25000000,15000000,25000000,20000000,20000000,30000000,20000000,20000000,25000000,10000000],
+       usage:[18066600,32890980,12422500,0,0,0,0,0,0,0,0,0]},
+      {id:'B-2.5', cat:'opex_rr', name:'Fire/Safety/CCTV', bobot:3, budget_ann:60000000, usage_ann:66265675,
+       budget:[5000000,5000000,10000000,5000000,5000000,5000000,5000000,10000000,5000000,5000000,10000000,5000000],
+       usage:[66265675,0,0,0,0,0,0,0,0,0,0,0]},
+      {id:'B-2.6', cat:'opex_rr', name:'Lift', bobot:4, budget_ann:215000000, usage_ann:41055750,
+       budget:[35000000,10000000,25000000,15000000,30000000,20000000,35000000,10000000,15000000,20000000,0,15000000],
+       usage:[1496250,39559500,0,0,0,0,0,0,0,0,0,0]},
+      {id:'B-2.7', cat:'opex_rr', name:'BAS/FA', bobot:2, budget_ann:30000000, usage_ann:5792600,
+       budget:[5000000,5000000,0,0,5000000,5000000,0,0,5000000,5000000,0,0],
+       usage:[0,5792600,0,0,0,0,0,0,0,0,0,0]},
+      {id:'B-2.8', cat:'opex_rr', name:'Genset', bobot:3, budget_ann:35000000, usage_ann:3177564,
+       budget:[0,5000000,0,5000000,10000000,5000000,0,5000000,0,5000000,0,15000000],
+       usage:[0,2227000,950564,0,0,0,0,0,0,0,0,0]},
+    ],
+    capex: {id:'C-3.1', cat:'capex', name:'CAPEX Projects', bobot:20,
+      budget_total: 33380500000, po_total: 9278818692, paid_total: 2443102590,
+      items_total: 59, done: 6, progress: 5, proses_po: 6, retensi: 16, belum: 26},
+    pm: {id:'B-5.5', cat:'pm', name:'Project Maintenance', bobot:10,
+      budget_total: 2334000000, po_total: 142307571, paid_total: 39267321,
+      items_total: 20, done: 2, progress: 0, retensi: 2, belum: 16},
+    readiness: {id:'B-6.6', cat:'readiness', name:'Equipment Readiness', bobot:10, score: 87.5, target: 90},
+    reliability: {id:'B-7.7', cat:'reliability', name:'Equipment Reliability', bobot:7, score: 92.1, target: 95},
+  }
+};
+
+// =============================================
+// HELPERS
+// =============================================
+function fmtRp(n){
+  if(n==null||isNaN(n)) return 'Rp 0';
+  return 'Rp '+Math.round(n).toLocaleString('id-ID');
+}
+function fmtRpAxis(n){
+  if(Math.abs(n)>=1e9) return 'Rp '+(n/1e9).toFixed(1)+' Mlr';
+  if(Math.abs(n)>=1e6) return 'Rp '+(n/1e6).toFixed(0)+' Jt';
+  return 'Rp '+Math.round(n).toLocaleString('id-ID');
+}
+function fmtRpShort(n){
+  if(Math.abs(n)>=1e12) return (n/1e12).toFixed(1)+'T';
+  if(Math.abs(n)>=1e9) return (n/1e9).toFixed(1)+'M';
+  if(Math.abs(n)>=1e6) return (n/1e6).toFixed(0)+'Jt';
+  return Math.round(n).toLocaleString('id-ID');
+}
+function pct(a,b){return b>0?(a/b*100):0;}
+function qMonths(q){
+  if(q==='Q1')return[0,1,2];if(q==='Q2')return[3,4,5];
+  if(q==='Q3')return[6,7,8];if(q==='Q4')return[9,10,11];
+  return[0,1,2,3,4,5,6,7,8,9,10,11];
+}
+function sumQ(arr,q){return qMonths(q).reduce((s,i)=>s+(arr[i]||0),0);}
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// =============================================
+// F1: IMPORT EXCEL
+// =============================================
+document.getElementById('fileImport').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try {
+      const wb = XLSX.read(ev.target.result, {type:'array'});
+      let imported = 0;
+      wb.SheetNames.forEach(sn => {
+        const ws = wb.Sheets[sn];
+        const json = XLSX.utils.sheet_to_json(ws, {header:1, defval:0});
+        // Try to detect and map data
+        const snl = sn.toLowerCase();
+        if(snl.includes('utilit') || snl.includes('summary usage')){
+          // Parse utilities-style summary
+          for(let r=0;r<json.length;r++){
+            const row = json[r];
+            if(!row) continue;
+            const label = String(row[1]||'').toLowerCase();
+            let target = null;
+            if(label.includes('electric')) target = STATE.data.opex_utilities[0];
+            else if(label.includes('water')) target = STATE.data.opex_utilities[1];
+            else if(label.includes('caz')||label.includes('gas')) target = STATE.data.opex_utilities[2];
+            if(target && r+1<json.length){
+              const budgetRow = row;
+              const usageRow = json[r+1];
+              if(String(usageRow[2]||'').toLowerCase().includes('usage')||String(usageRow[2]||'').toLowerCase().includes('pemakaian')){
+                for(let m=0;m<12;m++){
+                  const bv = Number(budgetRow[3+m])||0;
+                  const uv = Number(usageRow[3+m])||0;
+                  if(bv>0) target.budget[m] = bv;
+                  if(uv>0) target.usage[m] = uv;
+                }
+                imported++;
+              }
+            }
+          }
+        }
+        if(snl.includes('repair') || snl.includes('r&r') || snl.includes('opex') && snl.includes('eng')){
+          for(let r=0;r<json.length;r++){
+            const row = json[r];
+            if(!row) continue;
+            const label = String(row[1]||'').toLowerCase();
+            STATE.data.opex_rr.forEach(item => {
+              if(label.includes(item.name.toLowerCase().substring(0,6))){
+                if(r+1<json.length){
+                  const usageRow = json[r+1];
+                  for(let m=0;m<12;m++){
+                    const bv = Number(row[3+m])||0;
+                    const uv = Number(usageRow[3+m])||0;
+                    if(bv>0) item.budget[m] = bv;
+                    if(uv>0) item.usage[m] = uv;
+                  }
+                  imported++;
+                }
+              }
+            });
+          }
+        }
+      });
+      showToast(`✓ Imported ${imported} data series from ${file.name}`);
+      renderAll();
+    } catch(err) {
+      showToast('⚠ Error parsing file: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value = '';
+});
+
+// =============================================
+// F2: EXPORT EXCEL
+// =============================================
+function exportExcel(){
+  const wb = XLSX.utils.book_new();
+  // Sheet 1: OPEX Utilities
+  const opexData = [['KPI Dashboard 2026 — OPEX Utilities'],[''],
+    ['Item','Budget Annual','Usage YTD','% Usage','Remaining','Jan Budget','Feb Budget','Mar Budget','Jan Usage','Feb Usage','Mar Usage']];
+  STATE.data.opex_utilities.forEach(item => {
+    const bTotal = item.budget.reduce((a,b)=>a+b,0);
+    const uTotal = item.usage.reduce((a,b)=>a+b,0);
+    opexData.push([item.name,bTotal,uTotal,uTotal/bTotal,bTotal-uTotal,...item.budget.slice(0,3),...item.usage.slice(0,3)]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(opexData), 'OPEX Utilities');
+  // Sheet 2: Readiness
+  const rdData = [['Equipment Readiness'],[''],['Metric','Score','Target','Status'],
+    ['Readiness Index',STATE.data.readiness.score,STATE.data.readiness.target,STATE.data.readiness.score>=STATE.data.readiness.target?'On Track':'Below Target']];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rdData), 'Readiness');
+  // Sheet 3: Reliability
+  const rlData = [['Equipment Reliability'],[''],['Metric','Score','Target','Status'],
+    ['Reliability Index',STATE.data.reliability.score,STATE.data.reliability.target,STATE.data.reliability.score>=STATE.data.reliability.target?'On Track':'Below Target']];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rlData), 'Reliability');
+  // Sheet 4: CAPEX
+  const cxData = [['CAPEX Summary'],[''],['Metric','Value'],
+    ['Budget Total',STATE.data.capex.budget_total],['PO Total',STATE.data.capex.po_total],['Paid Total',STATE.data.capex.paid_total],
+    ['Items',STATE.data.capex.items_total],['Done',STATE.data.capex.done],['In Progress',STATE.data.capex.progress],['Proses PO',STATE.data.capex.proses_po],['Belum Dimulai',STATE.data.capex.belum]];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cxData), 'CAPEX');
+  // Sheet 5: PM
+  const pmData = [['Project Maintenance Summary'],[''],['Metric','Value'],
+    ['Budget Total',STATE.data.pm.budget_total],['PO Total',STATE.data.pm.po_total],['Paid Total',STATE.data.pm.paid_total],
+    ['Items',STATE.data.pm.items_total],['Done',STATE.data.pm.done]];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pmData), 'Project Maintenance');
+  // Sheet 6: OPEX R&R
+  const rrData = [['OPEX Repair & Replacement'],[''],
+    ['Category','Budget Annual','Usage YTD','% Usage',...MONTHS.map(m=>`${m} Budget`),...MONTHS.map(m=>`${m} Usage`)]];
+  STATE.data.opex_rr.forEach(item => {
+    rrData.push([item.name,item.budget_ann||item.budget.reduce((a,b)=>a+b,0),
+      item.usage_ann||item.usage.reduce((a,b)=>a+b,0),
+      (item.usage_ann||item.usage.reduce((a,b)=>a+b,0))/(item.budget_ann||item.budget.reduce((a,b)=>a+b,0)),
+      ...item.budget,...item.usage]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rrData), 'Customer');
+
+  XLSX.writeFile(wb, 'KPI_Dashboard_ENG_2026.xlsx');
+  showToast('✓ Exported 6 sheets to KPI_Dashboard_ENG_2026.xlsx');
+}
+
+// =============================================
+// F3: SAVE & LOAD (In-Memory + Download)
+// =============================================
+let savedState = null;
+function saveState(){
+  savedState = JSON.parse(JSON.stringify(STATE));
+  const blob = new Blob([JSON.stringify(STATE,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'kpi_state_2026.json'; a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('lastSaved').textContent = 'Saved: '+new Date().toLocaleString('id-ID');
+  showToast('✓ State saved & downloaded');
+}
+function loadState(){
+  if(savedState){
+    Object.assign(STATE, JSON.parse(JSON.stringify(savedState)));
+    renderAll();
+    showToast('✓ State restored from memory');
+    return;
+  }
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='.json';
+  inp.onchange = e => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const loaded = JSON.parse(ev.target.result);
+        Object.assign(STATE, loaded);
+        renderAll();
+        showToast('✓ State loaded from file');
+      } catch(err){ showToast('⚠ Invalid state file'); }
+    };
+    reader.readAsText(e.target.files[0]);
+  };
+  inp.click();
+}
+
+// =============================================
+// F4: QUARTER FILTER
+// =============================================
+function setQuarter(q){
+  STATE.quarter = q;
+  document.querySelectorAll('#qFilter .btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.q === q);
+  });
+  renderAll();
+}
+
+// =============================================
+// F5: PRINT REPORT
+// =============================================
+function printReport(){
+  const kpis = getKPIs();
+  let html = '<tr><th>#</th><th>KPI ID</th><th>Indicator</th><th>Bobot</th><th class="rp">Budget</th><th class="rp">Realization</th><th>% Achievement</th><th>Score</th><th>Status</th></tr>';
+  kpis.forEach((k,i) => {
+    const statusTxt = k.achievement >= 100 ? 'Exceed' : k.achievement >= 80 ? 'On Track' : k.achievement >= 60 ? 'Warning' : 'Below';
+    html += `<tr><td>${i+1}</td><td>${k.id}</td><td>${k.name}</td><td>${k.bobot}%</td><td class="rp">${fmtRp(k.budget)}</td><td class="rp">${fmtRp(k.realization)}</td><td>${k.achievement.toFixed(1)}%</td><td>${k.score.toFixed(1)}</td><td>${statusTxt}</td></tr>`;
+  });
+  document.getElementById('printTable').innerHTML = html;
+  document.getElementById('printDate').textContent = 'Generated: '+new Date().toLocaleString('id-ID')+' | Quarter: '+STATE.quarter;
+  window.print();
+}
+
+// =============================================
+// F7: KPI SCORE CALCULATION
+// =============================================
+function getKPIs(){
+  const q = STATE.quarter;
+  const kpis = [];
+
+  // OPEX Utilities (3 KPIs)
+  STATE.data.opex_utilities.forEach(item => {
+    const bgt = sumQ(item.budget, q);
+    const usg = sumQ(item.usage, q);
+    // For cost: under budget = good → achievement = budget/usage * 100 (capped)
+    const ach = usg > 0 ? Math.min((bgt/usg)*100, 150) : (bgt > 0 ? 0 : 100);
+    kpis.push({id:item.id, name:item.name, bobot:item.bobot, budget:bgt, realization:usg,
+      achievement: ach, score: ach * item.bobot / 100});
+  });
+
+  // OPEX R&R (8 → aggregated to 1 KPI)
+  const rrBgt = STATE.data.opex_rr.reduce((s,item)=>s+sumQ(item.budget,q),0);
+  const rrUsg = STATE.data.opex_rr.reduce((s,item)=>s+sumQ(item.usage,q),0);
+  const rrAch = rrUsg>0 ? Math.min((rrBgt/rrUsg)*100,150) : 100;
+  kpis.push({id:'B-2.0', name:'OPEX R&R (Total)', bobot:15, budget:rrBgt, realization:rrUsg,
+    achievement:rrAch, score:rrAch*15/100});
+
+  // CAPEX
+  const cx = STATE.data.capex;
+  const cxAch = cx.budget_total>0 ? (cx.po_total/cx.budget_total)*100 : 0;
+  kpis.push({id:cx.id, name:cx.name, bobot:cx.bobot, budget:cx.budget_total, realization:cx.po_total,
+    achievement:cxAch, score:cxAch*cx.bobot/100});
+
+  // PM
+  const pm = STATE.data.pm;
+  const pmAch = pm.budget_total>0 ? (pm.po_total/pm.budget_total)*100 : 0;
+  kpis.push({id:pm.id, name:pm.name, bobot:pm.bobot, budget:pm.budget_total, realization:pm.po_total,
+    achievement:pmAch, score:pmAch*pm.bobot/100});
+
+  // Readiness
+  const rd = STATE.data.readiness;
+  const rdAch = (rd.score/rd.target)*100;
+  kpis.push({id:rd.id, name:rd.name, bobot:rd.bobot, budget:rd.target, realization:rd.score,
+    achievement:rdAch, score:rdAch*rd.bobot/100});
+
+  // Reliability
+  const rl = STATE.data.reliability;
+  const rlAch = (rl.score/rl.target)*100;
+  kpis.push({id:rl.id, name:rl.name, bobot:rl.bobot, budget:rl.target, realization:rl.score,
+    achievement:rlAch, score:rlAch*rl.bobot/100});
+
+  // Customer (derived from CAPEX done projects)
+  const custDone = cx.done + cx.progress;
+  const custTarget = cx.items_total;
+  const custAch = custTarget>0 ? (custDone/custTarget)*100*3 : 0; // weighted
+  kpis.push({id:'D-8.8', name:'Customer Satisfaction (Project Delivery)', bobot:8,
+    budget:custTarget, realization:custDone, achievement:Math.min(custAch,120), score:Math.min(custAch,120)*8/100});
+
+  // Overall
+  const totalScore = kpis.reduce((s,k)=>s+k.score,0);
+  const totalBobot = kpis.reduce((s,k)=>s+k.bobot,0);
+  kpis.push({id:'TOTAL', name:'Overall KPI Score', bobot:totalBobot, budget:0, realization:0,
+    achievement:totalScore, score:totalScore, isTotal:true});
+
+  return kpis;
+}
+
+// =============================================
+// RENDERING
+// =============================================
+const charts = {};
+
+function renderKPICards(){
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = '';
+  const kpis = getKPIs();
+  kpis.forEach(k => {
+    const status = k.achievement >= 90 ? 'good' : k.achievement >= 60 ? 'warn' : 'bad';
+    const statusColor = status==='good'?'var(--grn)':status==='warn'?'var(--amb)':'var(--red)';
+    const valDisplay = k.isTotal ? k.score.toFixed(1)+'%' :
+      (k.budget > 1000 ? fmtRpShort(k.realization) : k.realization);
+    const card = document.createElement('div');
+    card.className = 'kpi-card';
+    card.dataset.status = status;
+    card.innerHTML = `
+      <div class="kpi-id">${k.id} · Bobot ${k.bobot}%</div>
+      <div class="kpi-name">${k.name}</div>
+      <div class="kpi-val" style="color:${statusColor}">${k.isTotal ? k.score.toFixed(1)+'%' : k.achievement.toFixed(1)+'%'}</div>
+      <div class="kpi-target">${k.isTotal?'Weighted Score':'Budget: '+fmtRpShort(k.budget)+' → Real: '+fmtRpShort(k.realization)}</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${Math.min(k.achievement,100)}%;background:${statusColor}"></div></div>
+      <div class="kpi-mini">
+        <span class="sdot ${status==='good'?'sdot-g':status==='warn'?'sdot-w':'sdot-r'}"></span>
+        Score: ${k.score.toFixed(1)} / ${k.bobot}
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function renderCharts(){
+  const q = STATE.quarter;
+  const rpCallback = {callback:v=>fmtRpAxis(v)};
+  const rpTooltip = {callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtRp(ctx.parsed.y||ctx.parsed.r||ctx.raw)}`}};
+  const gridColor = 'rgba(30,45,69,.5)';
+  const tickColor = '#5a6f8e';
+  const fontOpts = {family:'Outfit',size:10};
+
+  const baseOpts = {responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:tickColor,font:fontOpts}},tooltip:rpTooltip},
+    scales:{x:{ticks:{color:tickColor,font:fontOpts},grid:{color:gridColor}},
+            y:{ticks:{...rpCallback,color:tickColor,font:fontOpts},grid:{color:gridColor}}}};
+
+  // Budget vs Realization
+  const cats = ['Electricity','Water','Gas','OPEX R&R','CAPEX','Proj Maint'];
+  const budgets = [
+    sumQ(STATE.data.opex_utilities[0].budget,q),
+    sumQ(STATE.data.opex_utilities[1].budget,q),
+    sumQ(STATE.data.opex_utilities[2].budget,q),
+    STATE.data.opex_rr.reduce((s,i)=>s+sumQ(i.budget,q),0),
+    STATE.data.capex.budget_total,
+    STATE.data.pm.budget_total
+  ];
+  const reals = [
+    sumQ(STATE.data.opex_utilities[0].usage,q),
+    sumQ(STATE.data.opex_utilities[1].usage,q),
+    sumQ(STATE.data.opex_utilities[2].usage,q),
+    STATE.data.opex_rr.reduce((s,i)=>s+sumQ(i.usage,q),0),
+    STATE.data.capex.po_total,
+    STATE.data.pm.po_total
+  ];
+  updateChart('chBudgetReal','bar',{
+    labels:cats,
+    datasets:[
+      {label:'Budget',data:budgets,backgroundColor:'rgba(45,127,249,.25)',borderColor:'#2d7ff9',borderWidth:1.5},
+      {label:'Realization',data:reals,backgroundColor:'rgba(0,196,140,.25)',borderColor:'#00c48c',borderWidth:1.5}
+    ]
+  },baseOpts);
+
+  // KPI Radar
+  const kpis = getKPIs().filter(k=>!k.isTotal);
+  updateChart('chKPIRadar','radar',{
+    labels:kpis.map(k=>k.id),
+    datasets:[{label:'Achievement %',data:kpis.map(k=>Math.min(k.achievement,120)),
+      backgroundColor:'rgba(45,127,249,.15)',borderColor:'#2d7ff9',pointBackgroundColor:'#2d7ff9',borderWidth:2},
+      {label:'Target (100%)',data:kpis.map(()=>100),
+      backgroundColor:'rgba(255,176,32,.05)',borderColor:'rgba(255,176,32,.4)',borderWidth:1,borderDash:[4,4],pointRadius:0}]
+  },{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:tickColor,font:fontOpts}}},
+    scales:{r:{grid:{color:gridColor},ticks:{color:tickColor,font:{size:8},backdropColor:'transparent'},
+      pointLabels:{color:'#8fa3c4',font:{size:9}}}}});
+
+  // Utilities Monthly
+  const mi = qMonths(q);
+  const mLabels = mi.map(i=>MONTHS[i]);
+  updateChart('chUtilMonthly','bar',{
+    labels:mLabels,
+    datasets:[
+      {label:'Budget',data:mi.map(i=>STATE.data.opex_utilities.reduce((s,item)=>s+item.budget[i],0)),
+        backgroundColor:'rgba(45,127,249,.2)',borderColor:'#2d7ff9',borderWidth:1},
+      {label:'Usage',data:mi.map(i=>STATE.data.opex_utilities.reduce((s,item)=>s+item.usage[i],0)),
+        backgroundColor:'rgba(0,196,140,.2)',borderColor:'#00c48c',borderWidth:1}
+    ]
+  },baseOpts);
+
+  // R&R Category
+  updateChart('chRRCat','bar',{
+    labels:STATE.data.opex_rr.map(i=>i.name.substring(0,15)),
+    datasets:[
+      {label:'Budget',data:STATE.data.opex_rr.map(i=>sumQ(i.budget,q)),backgroundColor:'rgba(124,92,252,.2)',borderColor:'#7c5cfc',borderWidth:1},
+      {label:'Usage',data:STATE.data.opex_rr.map(i=>sumQ(i.usage,q)),backgroundColor:'rgba(0,196,140,.2)',borderColor:'#00c48c',borderWidth:1}
+    ]
+  },{...baseOpts,indexAxis:'y'});
+
+  // CAPEX Status
+  const cx = STATE.data.capex;
+  updateChart('chCapexStatus','doughnut',{
+    labels:['Done/BAST','On Progress','Proses PO','Retensi','Belum Dimulai'],
+    datasets:[{data:[cx.done,cx.progress,cx.proses_po,cx.retensi,cx.belum],
+      backgroundColor:['#00c48c','#2d7ff9','#ffb020','#7c5cfc','#374151'],borderWidth:0}]
+  },{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'right',labels:{color:tickColor,font:fontOpts,padding:12}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} projects`}}}});
+
+  // Allocation
+  updateChart('chAllocation','doughnut',{
+    labels:['OPEX Utilities','OPEX R&R','CAPEX','Project Maint'],
+    datasets:[{data:[
+      STATE.data.opex_utilities.reduce((s,i)=>s+i.budget.reduce((a,b)=>a+b,0),0),
+      STATE.data.opex_rr.reduce((s,i)=>s+i.budget.reduce((a,b)=>a+b,0),0),
+      cx.budget_total, STATE.data.pm.budget_total
+    ],backgroundColor:['#ffb020','#7c5cfc','#2d7ff9','#ff4757'],borderWidth:0}]
+  },{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'right',labels:{color:tickColor,font:fontOpts,padding:12}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fmtRpAxis(ctx.raw)}`}}}});
+}
+
+function updateChart(id, type, data, options){
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {type,data,options});
+}
+
+// =============================================
+// F6: EDITABLE DATA TABLE
+// =============================================
+function renderDataTable(){
+  const tbody = document.getElementById('dataTbody');
+  tbody.innerHTML = '';
+  const allItems = [
+    ...STATE.data.opex_utilities.map(i=>({...i,type:'opex_util'})),
+    ...STATE.data.opex_rr.map(i=>({...i,type:'opex_rr'})),
+  ];
+  allItems.forEach((item,idx) => {
+    const bTotal = item.budget.reduce((a,b)=>a+b,0);
+    const uTotal = item.usage.reduce((a,b)=>a+b,0);
+    const pctUsed = bTotal>0?(uTotal/bTotal*100):0;
+    const statusCls = pctUsed>100?'b-bad':pctUsed>75?'b-warn':'b-good';
+    const statusTxt = pctUsed>100?'Over Budget':pctUsed>75?'High':'Normal';
+
+    const tr = document.createElement('tr');
+    tr.dataset.cat = item.type;
+    let monthCells = '';
+    for(let m=0;m<12;m++){
+      monthCells += `<td class="rp"><div class="editable" contenteditable="true" data-idx="${idx}" data-month="${m}" onblur="onCellEdit(this)">${Math.round(item.usage[m]).toLocaleString('id-ID')}</div></td>`;
+    }
+    tr.innerHTML = `<td style="font-family:'IBM Plex Mono';font-size:10px;color:var(--pri2)">${item.id}</td>
+      <td><span class="badge b-info">${item.type==='opex_util'?'Utilities':'R&R'}</span></td>
+      <td>${item.name}</td>
+      <td class="rp">${fmtRp(bTotal)}</td>
+      ${monthCells}
+      <td class="rp" style="font-weight:600">${fmtRp(uTotal)}</td>
+      <td><span style="font-family:'IBM Plex Mono';font-size:10px">${pctUsed.toFixed(1)}%</span></td>
+      <td><span class="badge ${statusCls}">${statusTxt}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function onCellEdit(el){
+  const idx = parseInt(el.dataset.idx);
+  const month = parseInt(el.dataset.month);
+  const rawVal = el.textContent.replace(/[^\d]/g,'');
+  const numVal = parseInt(rawVal)||0;
+
+  // Determine which array to update
+  const utilCount = STATE.data.opex_utilities.length;
+  if(idx < utilCount){
+    STATE.data.opex_utilities[idx].usage[month] = numVal;
+  } else {
+    STATE.data.opex_rr[idx-utilCount].usage[month] = numVal;
+  }
+
+  el.textContent = Math.round(numVal).toLocaleString('id-ID');
+  el.classList.add('edited');
+  setTimeout(()=>el.classList.remove('edited'),500);
+
+  // Re-render charts and KPI cards
+  renderKPICards();
+  renderCharts();
+  renderTrend();
+  showToast('✓ Data updated — charts refreshed');
+}
+
+function filterTbl(){
+  const cat = document.getElementById('tblCatFilter').value;
+  document.querySelectorAll('#dataTbody tr').forEach(tr => {
+    tr.style.display = (!cat || tr.dataset.cat === cat) ? '' : 'none';
+  });
+}
+
+// =============================================
+// F9: TREND ANALYSIS
+// =============================================
+function renderTrend(){
+  const metric = document.getElementById('trendMetric').value;
+  let budgets, usages, label;
+
+  if(metric==='util_total'){
+    budgets = Array(12).fill(0); usages = Array(12).fill(0);
+    STATE.data.opex_utilities.forEach(item=>{item.budget.forEach((v,i)=>budgets[i]+=v);item.usage.forEach((v,i)=>usages[i]+=v);});
+    label = 'OPEX Utilities Total';
+  } else if(metric==='util_elec'){
+    const item = STATE.data.opex_utilities[0]; budgets=[...item.budget]; usages=[...item.usage]; label='Electricity';
+  } else if(metric==='util_water'){
+    const item = STATE.data.opex_utilities[1]; budgets=[...item.budget]; usages=[...item.usage]; label='Water';
+  } else if(metric==='util_gas'){
+    const item = STATE.data.opex_utilities[2]; budgets=[...item.budget]; usages=[...item.usage]; label='Gas (Caz)';
+  } else {
+    budgets = Array(12).fill(0); usages = Array(12).fill(0);
+    STATE.data.opex_rr.forEach(item=>{item.budget.forEach((v,i)=>budgets[i]+=v);item.usage.forEach((v,i)=>usages[i]+=v);});
+    label = 'OPEX R&R Total';
+  }
+
+  // Moving Average 3 months
+  const ma = usages.map((v,i) => {
+    if(i<2) return v;
+    return (usages[i]+usages[i-1]+usages[i-2])/3;
+  });
+
+  const tickColor = '#5a6f8e';
+  const gridColor = 'rgba(30,45,69,.5)';
+  const fontOpts = {family:'Outfit',size:10};
+  const rpCallback = {callback:v=>fmtRpAxis(v)};
+  const rpTooltip = {callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtRp(ctx.raw)}`}};
+  const baseOpts = {responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:tickColor,font:fontOpts}},tooltip:rpTooltip},
+    scales:{x:{ticks:{color:tickColor,font:fontOpts},grid:{color:gridColor}},
+            y:{ticks:{...rpCallback,color:tickColor,font:fontOpts},grid:{color:gridColor}}}};
+
+  updateChart('chMA','line',{
+    labels:MONTHS,
+    datasets:[
+      {label:'Actual Usage',data:usages,borderColor:'#2d7ff9',backgroundColor:'rgba(45,127,249,.08)',fill:true,tension:.3,borderWidth:2,pointRadius:3,pointBackgroundColor:'#2d7ff9'},
+      {label:'MA-3 Bulan',data:ma,borderColor:'#ffb020',borderWidth:2,borderDash:[6,3],tension:.3,pointRadius:0,fill:false},
+      {label:'Budget',data:budgets,borderColor:'rgba(255,71,87,.4)',borderWidth:1,borderDash:[3,3],tension:.3,pointRadius:0,fill:false}
+    ]
+  },baseOpts);
+
+  // Cumulative
+  const cumBudget = budgets.reduce((acc,v,i)=>{acc.push((acc[i-1]||0)+v);return acc;},[]);
+  const cumUsage = usages.reduce((acc,v,i)=>{acc.push((acc[i-1]||0)+v);return acc;},[]);
+  updateChart('chCum','line',{
+    labels:MONTHS,
+    datasets:[
+      {label:'Cumulative Budget',data:cumBudget,borderColor:'#ff4757',backgroundColor:'rgba(255,71,87,.06)',fill:true,tension:.3,borderWidth:2},
+      {label:'Cumulative Usage',data:cumUsage,borderColor:'#00c48c',backgroundColor:'rgba(0,196,140,.06)',fill:true,tension:.3,borderWidth:2}
+    ]
+  },baseOpts);
+
+  // Quarter comparison
+  const qData = ['Q1','Q2','Q3','Q4'].map(q => {
+    const mi = qMonths(q);
+    return {budget: mi.reduce((s,i)=>s+budgets[i],0), usage: mi.reduce((s,i)=>s+usages[i],0)};
+  });
+  updateChart('chQComp','bar',{
+    labels:['Q1','Q2','Q3','Q4'],
+    datasets:[
+      {label:'Budget',data:qData.map(d=>d.budget),backgroundColor:'rgba(45,127,249,.25)',borderColor:'#2d7ff9',borderWidth:1.5},
+      {label:'Usage',data:qData.map(d=>d.usage),backgroundColor:'rgba(0,196,140,.25)',borderColor:'#00c48c',borderWidth:1.5}
+    ]
+  },baseOpts);
+}
+
+// =============================================
+// TAB SWITCHING
+// =============================================
+function switchTab(el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('sec-'+el.dataset.sec).classList.add('active');
+}
+
+// =============================================
+// RENDER ALL
+// =============================================
+function renderAll(){
+  renderKPICards();
+  renderCharts();
+  renderDataTable();
+  renderTrend();
+}
+
+// INIT
+renderAll();
+</script>
+</body>
+</html>
